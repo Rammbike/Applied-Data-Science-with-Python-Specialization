@@ -1,3 +1,548 @@
+Assignment 2 - Pandas Introduction
+All questions are weighted the same in this assignment.
+
+Part 1
+The following code loads the olympics dataset (olympics.csv), which was derrived from the Wikipedia entry on All Time Olympic Games Medals, and does some basic data cleaning.
+
+The columns are organized as # of Summer games, Summer medals, # of Winter games, Winter medals, total # number of games, total # of medals. Use this dataset to answer the questions below.
+
+import pandas as pd
+​
+df = pd.read_csv('olympics.csv', index_col=0, skiprows=1)
+​
+for col in df.columns:
+    if col[:2]=='01':
+        df.rename(columns={col:'Gold'+col[4:]}, inplace=True)
+    if col[:2]=='02':
+        df.rename(columns={col:'Silver'+col[4:]}, inplace=True)
+    if col[:2]=='03':
+        df.rename(columns={col:'Bronze'+col[4:]}, inplace=True)
+    if col[:1]=='№':
+        df.rename(columns={col:'#'+col[1:]}, inplace=True)
+​
+names_ids = df.index.str.split('\s\(') # split the index by '('
+​
+df.index = names_ids.str[0] # the [0] element is the country name (new index) 
+df['ID'] = names_ids.str[1].str[:3] # the [1] element is the abbreviation or ID (take first 3 characters from that)
+​
+df = df.drop('Totals')
+df.head()
+# Summer	Gold	Silver	Bronze	Total	# Winter	Gold.1	Silver.1	Bronze.1	Total.1	# Games	Gold.2	Silver.2	Bronze.2	Combined total	ID
+Afghanistan	13	0	0	2	2	0	0	0	0	0	13	0	0	2	2	AFG
+Algeria	12	5	2	8	15	3	0	0	0	0	15	5	2	8	15	ALG
+Argentina	23	18	24	28	70	18	0	0	0	0	41	18	24	28	70	ARG
+Armenia	5	1	2	9	12	6	0	0	0	0	11	1	2	9	12	ARM
+Australasia	2	3	4	5	12	0	0	0	0	0	2	3	4	5	12	ANZ
+Question 0 (Example)
+What is the first country in df?
+
+This function should return a Series.
+
+# You should write your whole answer within the function provided. The autograder will call
+# this function and compare the return value against the correct solution value
+def answer_zero():
+    # This function returns the row for Afghanistan, which is a Series object. The assignment
+    # question description will tell you the general format the autograder is expecting
+    return df.iloc[0]
+​
+# You can examine what your function returns by calling it in the cell. If you have questions
+# about the assignment formats, check out the discussion forums for any FAQs
+answer_zero() 
+# Summer           13
+Gold                0
+Silver              0
+Bronze              2
+Total               2
+# Winter            0
+Gold.1              0
+Silver.1            0
+Bronze.1            0
+Total.1             0
+# Games            13
+Gold.2              0
+Silver.2            0
+Bronze.2            2
+Combined total      2
+ID                AFG
+Name: Afghanistan, dtype: object
+Question 1
+Which country has won the most gold medals in summer games?
+
+This function should return a single string value.
+
+df['Gold'].idxmax()
+'United States'
+Question 2
+Which country had the biggest difference between their summer and winter gold medal counts?
+
+This function should return a single string value.
+
+df['diff'] = df['Gold'] - df['Gold.1']
+df['diff'].idxmax()
+'United States'
+Question 3
+Which country has the biggest difference between their summer gold medal counts and winter gold medal counts relative to their total gold medal count?
+
+Summer Gold−Winter GoldTotal Gold
+Summer Gold−Winter GoldTotal Gold
+Only include countries that have won at least 1 gold in both summer and winter.
+
+This function should return a single string value.
+
+df1 = df[(df['Gold']>0) & (df['Gold.1']>0)]
+df1['ratio'] = (df['Gold'] - df['Gold.1']) / df['Gold.2']
+df1['ratio'].idxmax()
+'Bulgaria'
+Question 4
+Write a function that creates a Series called "Points" which is a weighted value where each gold medal (Gold.2) counts for 3 points, silver medals (Silver.2) for 2 points, and bronze medals (Bronze.2) for 1 point. The function should return only the column (a Series object) which you created, with the country names as indices.
+
+This function should return a Series named Points of length 146
+
+df.head()
+df['Points'] = (df['Gold.2']*3) + (df['Silver.2']*2) + (df['Bronze.2']*1)
+df['Points'].argmax()
+'United States'
+Part 2
+For the next set of questions, we will be using census data from the United States Census Bureau. Counties are political and geographic subdivisions of states in the United States. This dataset contains population data for counties and states in the US from 2010 to 2015. See this document for a description of the variable names.
+
+The census dataset (census.csv) should be loaded as census_df. Answer questions using this as appropriate.
+
+Question 5
+Which state has the most counties in it? (hint: consider the sumlevel key carefully! You'll need this for future questions too...)
+
+This function should return a single string value.
+
+census_df = pd.read_csv('census.csv')
+census_df.head()
+SUMLEV	REGION	DIVISION	STATE	COUNTY	STNAME	CTYNAME	CENSUS2010POP	ESTIMATESBASE2010	POPESTIMATE2010	...	RDOMESTICMIG2011	RDOMESTICMIG2012	RDOMESTICMIG2013	RDOMESTICMIG2014	RDOMESTICMIG2015	RNETMIG2011	RNETMIG2012	RNETMIG2013	RNETMIG2014	RNETMIG2015
+0	40	3	6	1	0	Alabama	Alabama	4779736	4780127	4785161	...	0.002295	-0.193196	0.381066	0.582002	-0.467369	1.030015	0.826644	1.383282	1.724718	0.712594
+1	50	3	6	1	1	Alabama	Autauga County	54571	54571	54660	...	7.242091	-2.915927	-3.012349	2.265971	-2.530799	7.606016	-2.626146	-2.722002	2.592270	-2.187333
+2	50	3	6	1	3	Alabama	Baldwin County	182265	182265	183193	...	14.832960	17.647293	21.845705	19.243287	17.197872	15.844176	18.559627	22.727626	20.317142	18.293499
+3	50	3	6	1	5	Alabama	Barbour County	27457	27457	27341	...	-4.728132	-2.500690	-7.056824	-3.904217	-10.543299	-4.874741	-2.758113	-7.167664	-3.978583	-10.543299
+4	50	3	6	1	7	Alabama	Bibb County	22915	22919	22861	...	-5.527043	-5.068871	-6.201001	-0.177537	0.177258	-5.088389	-4.363636	-5.403729	0.754533	1.107861
+5 rows × 100 columns
+
+df1 = census_df[census_df['SUMLEV'] == 50]
+df1 = df1.groupby('STNAME')['STNAME'].count().argmax()
+df1
+'Texas'
+Question 6
+Only looking at the three most populous counties for each state, what are the three most populous states (in order of highest population to lowest population)? Use CENSUS2010POP.
+
+This function should return a list of string values.
+
+df1 = census_df
+df1 = df1.groupby('STNAME')['CENSUS2010POP'].apply(lambda x: x.nlargest(3).sum()).nlargest(3).index.tolist()
+df1
+['California', 'Texas', 'New York']
+Question 7
+Which county has had the largest absolute change in population within the period 2010-2015? (Hint: population values are stored in columns POPESTIMATE2010 through POPESTIMATE2015, you need to consider all six columns.)
+
+e.g. If County Population in the 5 year period is 100, 120, 80, 105, 100, 130, then its largest change in the period would be |130-80| = 50.
+
+This function should return a single string value.
+
+df1 = census_df.set_index(['STNAME'])
+columns = ['POPESTIMATE2010', 'POPESTIMATE2011', 'POPESTIMATE2012', 'POPESTIMATE2013', 'POPESTIMATE2014', 'POPESTIMATE2015']
+df1['Diff'] = df1.loc[:, columns].max(axis=1) - df1.loc[:, columns].min(axis=1)
+df1['Diff'].argmax()
+'Texas'
+Question 8
+In this datafile, the United States is broken up into four regions using the "REGION" column.
+
+Create a query that finds the counties that belong to regions 1 or 2, whose name starts with 'Washington', and whose POPESTIMATE2015 was greater than their POPESTIMATE 2014.
+
+This function should return a 5x2 DataFrame with the columns = ['STNAME', 'CTYNAME'] and the same index ID as the census_df (sorted ascending by index).
+
+df1 = census_df
+df1 = df1[ (df1['REGION'] < 3) & (df1['CTYNAME'].str.startswith('Washington')) & (df1['POPESTIMATE2015'] > df1['POPESTIMATE2014'])]
+df1 = df1[['STNAME', 'CTYNAME']]
+df1
+STNAME	CTYNAME
+896	Iowa	Washington County
+1419	Minnesota	Washington County
+2345	Pennsylvania	Washington County
+2355	Rhode Island	Washington County
+3163	Wisconsin	Washington County
+census_df.head()
+census_df[census_df['CTYNAME'].str.startswith('Wash')]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Assignment 3 - More Pandas
+This assignment requires more individual learning then the last one did - you are encouraged to check out the pandas documentation to find functions or methods you might not have used yet, or ask questions on Stack Overflow and tag them as pandas and python related. And of course, the discussion forums are open for interaction with your peers and the course staff.
+
+Question 1 (20%)
+Load the energy data from the file Energy Indicators.xls, which is a list of indicators of energy supply and renewable electricity production from the United Nations for the year 2013, and should be put into a DataFrame with the variable name of energy.
+
+Keep in mind that this is an Excel file, and not a comma separated values file. Also, make sure to exclude the footer and header information from the datafile. The first two columns are unneccessary, so you should get rid of them, and you should change the column labels so that the columns are:
+
+['Country', 'Energy Supply', 'Energy Supply per Capita', '% Renewable']
+
+Convert Energy Supply to gigajoules (there are 1,000,000 gigajoules in a petajoule). For all countries which have missing data (e.g. data with "...") make sure this is reflected as np.NaN values.
+
+Rename the following list of countries (for use in later questions):
+
+"Republic of Korea": "South Korea",
+"United States of America": "United States",
+"United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+"China, Hong Kong Special Administrative Region": "Hong Kong"
+
+There are also several countries with numbers and/or parenthesis in their name. Be sure to remove these,
+
+e.g.
+
+'Bolivia (Plurinational State of)' should be 'Bolivia',
+
+'Switzerland17' should be 'Switzerland'.
+
+
+
+Next, load the GDP data from the file world_bank.csv, which is a csv containing countries' GDP from 1960 to 2015 from World Bank. Call this DataFrame GDP.
+
+Make sure to skip the header, and rename the following list of countries:
+
+"Korea, Rep.": "South Korea", 
+"Iran, Islamic Rep.": "Iran",
+"Hong Kong SAR, China": "Hong Kong"
+
+
+
+Finally, load the Sciamgo Journal and Country Rank data for Energy Engineering and Power Technology from the file scimagojr-3.xlsx, which ranks countries based on their journal contributions in the aforementioned area. Call this DataFrame ScimEn.
+
+Join the three datasets: GDP, Energy, and ScimEn into a new dataset (using the intersection of country names). Use only the last 10 years (2006-2015) of GDP data and only the top 15 countries by Scimagojr 'Rank' (Rank 1 through 15).
+
+The index of this DataFrame should be the name of the country, and the columns should be ['Rank', 'Documents', 'Citable documents', 'Citations', 'Self-citations', 'Citations per document', 'H index', 'Energy Supply', 'Energy Supply per Capita', '% Renewable', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015'].
+
+This function should return a DataFrame with 20 columns and 15 entries.
+
+import pandas as pd
+import numpy as np
+​
+def answer_one():
+    energy = pd.read_excel('Energy Indicators.xls')
+    energy = energy[16:243]
+    energy = energy.drop(energy.columns[[0, 1]], axis=1)
+    energy.rename(columns={'Environmental Indicators: Energy': 'Country','Unnamed: 3':'Energy Supply','Unnamed: 4':'Energy Supply per Capita','Unnamed: 5':'% Renewable'}, inplace=True)
+    energy.replace('...', np.nan,inplace = True)
+    energy['Energy Supply'] *= 1000000
+    def remove_digit(data):
+        newData = ''.join([i for i in data if not i.isdigit()])
+        i = newData.find('(')
+        if i>-1: newData = newData[:i]
+        return newData.strip()
+    energy['Country'] = energy['Country'].apply(remove_digit)
+    di = {"Republic of Korea": "South Korea",
+    "United States of America": "United States",
+    "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+    "China, Hong Kong Special Administrative Region": "Hong Kong"}
+    energy.replace({"Country": di},inplace = True)
+     ###################################################################################
+    GDP = pd.read_csv('world_bank.csv', skiprows=4)
+    GDP.replace({"Korea, Rep.": "South Korea", 
+                "Iran, Islamic Rep.": "Iran",
+                "Hong Kong SAR, China": "Hong Kong"}, inplace=True)
+    GDP.rename(columns={'Country Name': 'Country'}, inplace=True)
+    ScimEn = pd.read_excel('scimagojr-3.xlsx')
+​
+    df = pd.merge(pd.merge(energy, GDP, on='Country'), ScimEn, on='Country')
+    df.set_index('Country',inplace=True)
+    df = df[['Rank', 'Documents', 'Citable documents', 'Citations', 'Self-citations', 'Citations per document', 'H index', 'Energy Supply', 'Energy Supply per Capita', '% Renewable', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015']]
+    df = (df.loc[df['Rank'].isin([i for i in range(1, 16)])])
+    df.sort('Rank',inplace=True)
+   
+​
+    return df
+Question 2 (6.6%)
+The previous question joined three datasets then reduced this to just the top 15 entries. When you joined the datasets, but before you reduced this to the top 15 items, how many entries did you lose?
+
+This function should return a single number.
+
+%%HTML
+<svg width="800" height="300">
+  <circle cx="150" cy="180" r="80" fill-opacity="0.2" stroke="black" stroke-width="2" fill="blue" />
+  <circle cx="200" cy="100" r="80" fill-opacity="0.2" stroke="black" stroke-width="2" fill="red" />
+  <circle cx="100" cy="100" r="80" fill-opacity="0.2" stroke="black" stroke-width="2" fill="green" />
+  <line x1="150" y1="125" x2="300" y2="150" stroke="black" stroke-width="2" fill="black" stroke-dasharray="5,3"/>
+  <text  x="300" y="165" font-family="Verdana" font-size="35">Everything but this!</text>
+</svg>
+Everything but this!
+def answer_two():
+    energy = pd.read_excel('Energy Indicators.xls')
+    energy = energy[16:243]
+    energy = energy.drop(energy.columns[[0, 1]], axis=1)
+    energy.rename(columns={'Environmental Indicators: Energy': 'Country','Unnamed: 3':'Energy Supply','Unnamed: 4':'Energy Supply per Capita','Unnamed: 5':'% Renewable'}, inplace=True)
+    energy.replace('...', np.nan,inplace = True)
+    energy['Energy Supply'] *= 1000000
+    def remove_digit(data):
+        newData = ''.join([i for i in data if not i.isdigit()])
+        i = newData.find('(')
+        if i>-1: newData = newData[:i]
+        return newData.strip()
+    energy['Country'] = energy['Country'].apply(remove_digit)
+    di = {"Republic of Korea": "South Korea",
+    "United States of America": "United States",
+    "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+    "China, Hong Kong Special Administrative Region": "Hong Kong"}
+    energy.replace({"Country": di},inplace = True)
+     ###################################################################################
+    GDP = pd.read_csv('world_bank.csv', skiprows=4)
+    GDP.replace({"Korea, Rep.": "South Korea", 
+                "Iran, Islamic Rep.": "Iran",
+                "Hong Kong SAR, China": "Hong Kong"}, inplace=True)
+    GDP.rename(columns={'Country Name': 'Country'}, inplace=True)
+    ScimEn = pd.read_excel('scimagojr-3.xlsx')
+    
+    
+    out1 = pd.merge(ScimEn, energy, how='outer', left_on='Country', right_on='Country')
+    out = pd.merge(out1, GDP, how='outer', left_on='Country', right_on='Country')
+​
+    inn1 = pd.merge(ScimEn, energy, how='inner', left_on='Country', right_on='Country')
+    inn = pd.merge(inn1, GDP, how='inner', left_on='Country', right_on='Country')
+​
+    return (len(out)-len(inn))
+​
+Answer the following questions in the context of only the top 15 countries by Scimagojr Rank (aka the DataFrame returned by answer_one())
+Question 3 (6.6%)
+What is the average GDP over the last 10 years for each country? (exclude missing values from this calculation.)
+
+This function should return a Series named avgGDP with 15 countries and their average GDP sorted in descending order.
+
+​
+def answer_three():
+    Top15 = answer_one()
+    Top15['avgGDP'] = Top15[['2006','2007','2008','2009','2010','2011','2012','2013','2014','2015']].mean(axis=1)
+    Top15 = Top15.sort_values(by='avgGDP', ascending=False)
+    return Top15['avgGDP']
+​
+Question 4 (6.6%)
+By how much had the GDP changed over the 10 year span for the country with the 6th largest average GDP?
+
+This function should return a single number.
+
+​
+def answer_four():
+    Top15 = answer_one()
+    Top15['avgGDP'] = Top15[['2006','2007','2008','2009','2010','2011','2012','2013','2014','2015']].mean(axis=1)
+    Top15 = Top15.sort_values(by='avgGDP', ascending=False)
+    sixth = Top15.iloc[5]
+    diff = abs(sixth['2006'] - sixth['2015'])
+    return diff
+​
+Question 5 (6.6%)
+What is the mean Energy Supply per Capita?
+
+This function should return a single number.
+
+​
+def answer_five():
+    Top15 = answer_one()
+    return Top15['Energy Supply per Capita'].mean()
+​
+Question 6 (6.6%)
+What country has the maximum % Renewable and what is the percentage?
+
+This function should return a tuple with the name of the country and the percentage.
+
+​
+def answer_six():
+    Top15 = answer_one()
+    return (Top15['% Renewable'].idxmax(),Top15['% Renewable'].max())
+​
+Question 7 (6.6%)
+Create a new column that is the ratio of Self-Citations to Total Citations. What is the maximum value for this new column, and what country has the highest ratio?
+
+This function should return a tuple with the name of the country and the ratio.
+
+def answer_seven():
+    Top15 = answer_one()
+    Top15['ratio'] = Top15['Self-citations'] / Top15['Citations']
+    return (Top15['ratio'].idxmax(), Top15['ratio'].max())
+​
+Question 8 (6.6%)
+Create a column that estimates the population using Energy Supply and Energy Supply per capita. What is the third most populous country according to this estimate?
+
+This function should return a single string value.
+
+def answer_eight():
+    Top15 = answer_one()
+    Top15['est'] = Top15['Energy Supply']/Top15['Energy Supply per Capita']
+    Top15 = Top15.sort_values(by='est', ascending=False)
+    return Top15.ix[2].name
+answer_eight()
+'United States'
+Question 9 (6.6%)
+Create a column that estimates the number of citable documents per person. What is the correlation between the number of citable documents per capita and the energy supply per capita? Use the .corr() method, (Pearson's correlation).
+
+This function should return a single number.
+
+(Optional: Use the built-in function plot9() to visualize the relationship between Energy Supply per Capita vs. Citable docs per Capita)
+
+def answer_nine():
+    Top15 = answer_one()
+    Top15['PopEst'] = Top15['Energy Supply'] / Top15['Energy Supply per Capita']
+    Top15['Citable docs per Capita'] = Top15['Citable documents'] / Top15['PopEst']
+    return Top15[['Citable docs per Capita','Energy Supply per Capita']].corr(method='pearson').iloc[0,1]
+​
+def plot9():
+    import matplotlib as plt
+    #%matplotlib inline
+    
+    Top15 = answer_one()
+    Top15['PopEst'] = Top15['Energy Supply'] / Top15['Energy Supply per Capita']
+    Top15['Citable docs per Capita'] = Top15['Citable documents'] / Top15['PopEst']
+    Top15.plot(x='Citable docs per Capita', y='Energy Supply per Capita', kind='scatter', xlim=[0, 0.0006])
+#plot9() # Be sure to comment out plot9() before submitting the assignment!
+Question 10 (6.6%)
+Create a new column with a 1 if the country's % Renewable value is at or above the median for all countries in the top 15, and a 0 if the country's % Renewable value is below the median.
+
+This function should return a series named HighRenew whose index is the country name sorted in ascending order of rank.
+
+def answer_ten():
+    Top15 = answer_one()
+    median = Top15['% Renewable'].median()
+    Top15['HighRenew'] = None
+    for row in range(len(Top15)):
+        if Top15.iloc[row, 9] >= median:
+            Top15.iloc[row, -1] = 1
+        else:
+            Top15.iloc[row, -1] = 0
+    return Top15['HighRenew'].sort_index()
+​
+Question 11 (6.6%)
+Use the following dictionary to group the Countries by Continent, then create a dateframe that displays the sample size (the number of countries in each continent bin), and the sum, mean, and std deviation for the estimated population of each country.
+
+ContinentDict  = {'China':'Asia', 
+                  'United States':'North America', 
+                  'Japan':'Asia', 
+                  'United Kingdom':'Europe', 
+                  'Russian Federation':'Europe', 
+                  'Canada':'North America', 
+                  'Germany':'Europe', 
+                  'India':'Asia',
+                  'France':'Europe', 
+                  'South Korea':'Asia', 
+                  'Italy':'Europe', 
+                  'Spain':'Europe', 
+                  'Iran':'Asia',
+                  'Australia':'Australia', 
+                  'Brazil':'South America'}
+This function should return a DataFrame with index named Continent ['Asia', 'Australia', 'Europe', 'North America', 'South America'] and columns ['size', 'sum', 'mean', 'std']
+
+def answer_eleven():
+    ContinentDict  = {'China':'Asia','United States':'North America','Japan':'Asia', 'United Kingdom':'Europe','Russian Federation':'Europe', 'Canada':'North America','Germany':'Europe','India':'Asia','France':'Europe', 'South Korea':'Asia','Italy':'Europe', 'Spain':'Europe','Iran':'Asia','Australia':'Australia','Brazil':'South America'}
+    Top15 = answer_one()
+    Top15['PopEst'] = Top15['Energy Supply'] / Top15['Energy Supply per Capita']
+    Top15['Continent'] = None
+    Top15 = Top15.reset_index()
+    Top15['Continent'] = Top15['Country'].map(ContinentDict)
+    Top15 = Top15.groupby('Continent')['PopEst'].agg({'size': np.size, 'sum': np.sum, 'mean': np.mean, 'std': np.std})
+    return Top15
+​
+Question 12 (6.6%)
+Cut % Renewable into 5 bins. Group Top15 by the Continent, as well as these new % Renewable bins. How many countries are in each of these groups?
+
+This function should return a Series with a MultiIndex of Continent, then the bins for % Renewable. Do not include groups with no countries.
+
+def answer_twelve():
+    Top15 = answer_one()
+    ContinentDict  = {'China':'Asia','United States':'North America','Japan':'Asia', 'United Kingdom':'Europe','Russian Federation':'Europe', 'Canada':'North America','Germany':'Europe','India':'Asia','France':'Europe', 'South Korea':'Asia','Italy':'Europe', 'Spain':'Europe','Iran':'Asia','Australia':'Australia','Brazil':'South America'}
+    Top15['Continent'] = None
+    Top15 = Top15.reset_index()
+    Top15['Continent'] = Top15['Country'].map(ContinentDict)
+    Top15['Bins'] = pd.cut(Top15['% Renewable'], 5, labels=['1', '2', '3', '4', ' 5'])
+    Top15 = Top15.groupby(['Continent', 'Bins'])['Country'].count()
+    return Top15
+​
+Question 13 (6.6%)
+Convert the Population Estimate series to a string with thousands separator (using commas). Do not round the results.
+
+e.g. 317615384.61538464 -> 317,615,384.61538464
+
+This function should return a Series PopEst whose index is the country name and whose values are the population estimate string.
+
+def answer_thirteen():
+    Top15 = answer_one()
+    Top15['PopEst'] = Top15['Energy Supply'] / Top15['Energy Supply per Capita']
+    Top15['PopEst'] = Top15['PopEst'].apply('{:,}'.format)
+    return Top15['PopEst']
+​
+Optional
+Use the built in function plot_optional() to see an example visualization.
+
+def plot_optional(): import matplotlib as plt %matplotlib inline Top15 = answer_one() ax = Top15.plot(x='Rank', y='% Renewable', kind='scatter', c=['#e41a1c','#377eb8','#e41a1c','#4daf4a','#4daf4a','#377eb8','#4daf4a','#e41a1c', '#4daf4a','#e41a1c','#4daf4a','#4daf4a','#e41a1c','#dede00','#ff7f00'], xticks=range(1,16), s=6Top15['2014']/10*10, alpha=.75, figsize=[16,6]);
+
+for i, txt in enumerate(Top15.index):
+    ax.annotate(txt, [Top15['Rank'][i], Top15['% Renewable'][i]], ha='center')
+
+print("This is an example of a visualization that can be created to help understand the data. \
+This is a bubble chart showing % Renewable vs. Rank. The size of the bubble corresponds to the countries' \ 2014 GDP, and the color corresponds to the continent.")
+
+#plot_optional() # Be sure to comment out plot_optional() before submitting the assignment!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Assignment 4 - Hypothesis Testing
 This assignment requires more individual learning than previous assignments - you are encouraged to check out the pandas documentation to find functions or methods you might not have used yet, or ask questions on Stack Overflow and tag them as pandas and python related. And of course, the discussion forums are open for interaction with your peers and the course staff.
 
