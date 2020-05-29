@@ -802,3 +802,74 @@ def GridSearch_Heatmap(scores):
     plt.yticks(rotation=0);
 ​
 #GridSearch_Heatmap(answer_six())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import train_test_split
+
+    train = pd.read_csv('train.csv', encoding="ISO-8859-1", low_memory=False)
+    train = train[(train['compliance'] == 1) | (train['compliance'] == 0)]
+
+    columns_to_keep = ['ticket_id', 'fine_amount', 'admin_fee', 'state_fee', 'late_fee', 'discount_amount', 'clean_up_cost', 'judgment_amount']
+    X = train[columns_to_keep]
+    y  = train['compliance']
+
+    test = pd.read_csv('test.csv', encoding="ISO-8859-1", low_memory=False)
+    test = test[columns_to_keep]
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    logit = LogisticRegression().fit(X_train, y_train)
+
+    y_score_logit = logit.decision_function(test)
+
+    probs = logit.predict_proba(test)[:,1]
+    test['prob'] = probs
+    output = test.set_index('ticket_id')['prob']
