@@ -1,0 +1,169 @@
+Assignment 1
+In this assignment, you'll be working with messy medical data and using regex to extract relevant infromation from the data.
+
+Each line of the dates.txt file corresponds to a medical note. Each note has a date that needs to be extracted, but each date is encoded in one of many formats.
+
+The goal of this assignment is to correctly identify all of the different date variants encoded in this dataset and to properly normalize and sort the dates.
+
+Here is a list of some of the variants you might encounter in this dataset:
+
+04/20/2009; 04/20/09; 4/20/09; 4/3/09
+Mar-20-2009; Mar 20, 2009; March 20, 2009; Mar. 20, 2009; Mar 20 2009;
+20 Mar 2009; 20 March 2009; 20 Mar. 2009; 20 March, 2009
+Mar 20th, 2009; Mar 21st, 2009; Mar 22nd, 2009
+Feb 2009; Sep 2009; Oct 2010
+6/2008; 12/2009
+2009; 2010
+Once you have extracted these date patterns from the text, the next step is to sort them in ascending chronological order accoring to the following rules:
+
+Assume all dates in xx/xx/xx format are mm/dd/yy
+Assume all dates where year is encoded in only two digits are years from the 1900's (e.g. 1/5/89 is January 5th, 1989)
+If the day is missing (e.g. 9/2009), assume it is the first day of the month (e.g. September 1, 2009).
+If the month is missing (e.g. 2010), assume it is the first of January of that year (e.g. January 1, 2010).
+Watch out for potential typos as this is a raw, real-life derived dataset.
+With these rules in mind, find the correct date in each note and return a pandas Series in chronological order of the original Series' indices.
+
+For example if the original series was this:
+
+0    1999
+1    2010
+2    1978
+3    2015
+4    1985
+Your function should return this:
+
+0    2
+1    4
+2    0
+3    1
+4    3
+Your score will be calculated using Kendall's tau, a correlation measure for ordinal data.
+
+This function should return a Series of length 500 and dtype int.
+
+​
+import pandas as pd
+import numpy as np
+​
+doc = []
+with open('dates.txt') as file:
+    for line in file:
+        doc.append(line)
+​
+df = pd.DataFrame(doc, columns=['Text'])
+df.head(5)
+Text
+0	03/25/93 Total time of visit (in minutes):\n
+1	6/18/85 Primary Care Doctor:\n
+2	sshe plans to move as of 7/8/71 In-Home Servic...
+3	7 on 9/27/75 Audit C Score Current:\n
+4	2/6/96 sleep studyPain Treatment Pain Level (N...
+​
+​
+​
+def date_sorter():
+    # 04/20/2009; 04/20/09; 4/20/09; 4/3/09
+    df1_1 = df['Text'].str.extractall(r'(\d{1,2})[/-](\d{1,2})[/-](\d{2})\b')
+    df1_2 = df['Text'].str.extractall(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b')
+    df1 = pd.concat([df1_1, df1_2])
+    df1.reset_index(inplace=True)
+    df1.columns=['level_0', 'match', 'Month', 'Day', 'Year']
+    df1['Year'] = df1['Year'].apply(lambda x: '19'+str(x) if len(x)<=2 else x)
+    df1['Day'] = df1['Day'].apply(lambda x: '0' + str(x) if len(x)<=1 else x)
+    months = {'01':'01', '02':'02', '03':'03', '04':'04', '05':'05', '06':'06', '07':'07', '08':'08', '09':'09', '1':'01', '2':'02', '3':'03', '4':'04', '5':'05', '6':'06', '7':'07', '8':'08', '9':'09', '10':'10', '11':'11', '12':'12'  }
+    df1['Month'] = df1['Month'].map(months)
+    df1_numbers = df1['level_0']
+​
+    df1
+​
+    # Mar-20-2009; Mar 20, 2009; March 20, 2009; Mar. 20, 2009; Mar 20 2009;
+    df2 = df['Text'].str.extractall(r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[-.]* )(\d{1,2})[?:, -]*(\d{4})')
+    df2.reset_index(inplace=True)
+    df2.columns=['level_0', 'match', 'Month', 'Day', 'Year']
+    df2['Month'] = df2['Month'].apply(lambda  x: x.replace('.', ''))
+    df2['Month'] = df2['Month'].apply(lambda x: x[:3])
+    dict = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12}
+    df2['Month'] = df2['Month'].map(dict)
+    df2['Month'] = df2['Month'].apply(lambda x: '0'+str(x) if x <= 9 else x)
+    df2_numbers = df2['level_0']
+    df2
+​
+    # 20 Mar 2009; 20 March 2009; 20 Mar. 2009; 20 March, 2009
+    # Feb 2009; Sep 2009; Oct 2010
+​
+    df3 = df['Text'].str.extractall(r'((?:\d{1,2} ))?((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[?:, -]* )(\d{4})')
+    df3.reset_index(inplace=True)
+    df3.columns=['level_0', 'match', 'Day', 'Month', 'Year']
+    df3['Month'] = df3['Month'].apply(lambda x: x[:3])
+    df3['Month'] = df3['Month'].map(dict)
+    df3['Day'] = df3['Day'].fillna('01')
+    df3['Month'] = df3['Month'].apply(lambda x: '0'+str(x) if x <= 9 else x)
+    df3_numbers = df3['level_0']
+    df3
+​
+    # 6/2008; 12/2009
+    df4 = df['Text'].str.extractall(r'(\d{1,2})[/](\d{4})')
+    df4.reset_index(inplace=True)
+    df4_numbers = df4['level_0']
+    rest = []
+    for num in df4_numbers:
+        if not (num in df1_numbers.values):
+            rest.append(num)
+    rest = np.array(rest)
+    df4 = df4[df4['level_0'].isin(rest)]
+    df4.columns=['level_0', 'match', 'Month', 'Year']
+    df4.insert(2, column='Day', value='01 ')
+    df4['Month'] = df4['Month'].map(months)
+    df4
+​
+    # 2009; 2010
+    df5_1 = df['Text'].str.extractall(r'[a-z]?[^0-9](\d{4})[^0-9]')
+    df5_2 = df['Text'].str.extractall(r'^(\d{4})[^0-9]')
+    df5 = pd.concat([df5_1, df5_2])
+    df5.reset_index(inplace=True)
+    df5_numbers = df5['level_0']
+​
+    rest = []
+    for num in df5_numbers:
+        if not ((num in df2_numbers.values) | (num in df3_numbers.values) | (num in df4_numbers.values)):
+            rest.append(num)
+    rest = np.array(rest)
+    df5 = df5[df5['level_0'].isin(rest)]
+    df5.columns=['level_0', 'match', 'Year']
+    df5.insert(2, column='Month', value='01')
+    df5.insert(2, column='Day', value='01')
+    df5
+​
+    values = df1['level_0'].values.tolist() + df2['level_0'].values.tolist() + df3['level_0'].values.tolist() + df4['level_0'].values.tolist() + df5['level_0'].values.tolist()
+    values = np.asarray(values)
+​
+    result = pd.concat([df1, df2, df3, df4, df5])
+    result['Date'] = pd.to_datetime(result['Year'].apply(str)+'-'+result['Month'].apply(str)+'-'+result['Day'].apply(str))
+    result = result.sort_values(by='Date')
+    result['Num'] = [num for num in range(len(result))]
+    result.set_index('Num', inplace=True)
+    answer = pd.Series(result['level_0'])
+    answer = answer.rename_axis(None)
+​
+    return answer
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
